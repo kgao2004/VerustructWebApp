@@ -5,10 +5,29 @@
     <div class="parameters-section">
       <h2>System Parameters</h2>
       <div class="form-grid">
+        <!-- Room shape selector -->
+        <div class="form-group">
+          <label for="roomShape">Room Shape:</label>
+          <select 
+            id="roomShape"
+            v-model="parameters.roomShape.value"
+            @change="updateParameter('roomShape', $event.target.value)"
+          >
+            <option 
+              v-for="option in parameters.roomShape.options"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Existing parameters -->
         <div 
-          class="form-group" 
-          v-for="(param, key) in parameters" 
+          v-for="(param, key) in filteredParameters" 
           :key="key"
+          class="form-group"
           :class="{ 'has-error': validationErrors[key] }"
         >
           <label :for="key">{{ formatLabel(key) }}:</label>
@@ -52,8 +71,22 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
+
+// Add conversion constants
+const CONVERSIONS = {
+  cmToInch: 0.393701,
+  cmToFeet: 0.0328084,
+  cmToYard: 0.0109361,
+  kgToLbs: 2.20462,
+  cubicCmToCubicInch: 0.0610237,
+  squareCmToSquareInch: 0.155,
+  cm2ToIn2: 0.155,
+  cm3ToIn3: 0.0610237,
+  pcfToKgCm3: 0.0000160185
+}
 
 export default {
   name: 'AdminPanel',
@@ -63,6 +96,17 @@ export default {
     const parameters = computed(() => store.state.systemParameters)
     const validationErrors = computed(() => store.state.validationErrors)
     
+    // Calculate number of layers as a computed property
+    const numberOfLayers = computed(() => {
+      const p = parameters.value;
+      return Math.ceil(parseFloat(p.totalWallHeight.value) / p.chamberA.value);
+    })
+
+    // Watch for changes in parameters and update calculations
+    watch(parameters, () => {
+      updateCalculations()
+    }, { deep: true })
+
     const updateParameter = (key, value) => {
       // Convert string to number if needed
       const numValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -73,11 +117,14 @@ export default {
     }
 
     const calculatedVariables = {
+      numberOfLayers: { 
+        get value() { return numberOfLayers.value }, 
+        unit: 'layers' 
+      },
       wallWidth: { value: 0, unit: 'cm', imperialValue: 0, imperialUnit: 'in' },
       layerVolume: { value: 0, unit: 'cm²', imperialValue: 0, imperialUnit: 'in²' },
       layerDeadLoad: { value: 0, unit: 'kg/cm', imperialValue: 0, imperialUnit: 'lb/in' },
       totalWallLength: { value: 0, unit: 'cm', imperialValue: 0, imperialUnit: 'in' },
-      totalWallHeight: { value: 0, unit: 'cm', imperialValue: 0, imperialUnit: 'in' },
       chamberVolume: { value: 0, unit: 'cm³', imperialValue: 0, imperialUnit: 'in³' },
       totalWallVolume: { value: 0, unit: 'cm³', imperialValue: 0, imperialUnit: 'in³' },
       layerMass: { value: 0, unit: 'kg', imperialValue: 0, imperialUnit: 'lbs' },
@@ -94,92 +141,98 @@ export default {
         .replace(/^./, str => str.toUpperCase());
     }
 
+    // Filter out parameters we don't want to show as regular inputs
+    const filteredParameters = computed(() => {
+      const params = { ...parameters.value };
+      delete params.roomShape;
+      return params;
+    });
+
     const updateCalculations = () => {
       const p = parameters.value;
       
-      // Wall total width
+      // Wall total width: w+2b
       calculatedVariables.wallWidth.value = p.wallGap.value + (2 * p.chamberB.value);
-      calculatedVariables.wallWidth.imperialValue = calculatedVariables.wallWidth.value * 0.393701;
+      calculatedVariables.wallWidth.imperialValue = 
+        calculatedVariables.wallWidth.value * CONVERSIONS.cmToInch;
       
-      // Layer Volume per unit length
+      // Layer Volume per unit length: (a×b)−(d×(a−c))
       calculatedVariables.layerVolume.value = 
         (p.chamberA.value * p.chamberB.value) - (p.chamberD.value * (p.chamberA.value - p.chamberC.value));
-      calculatedVariables.layerVolume.imperialValue = calculatedVariables.layerVolume.value * 0.155;
+      calculatedVariables.layerVolume.imperialValue = 
+        calculatedVariables.layerVolume.value * CONVERSIONS.cm2ToIn2;
       
-      // Layer Dead load per unit length
+      // Layer Dead load per unit length: ρ×Layer Volume
       calculatedVariables.layerDeadLoad.value = 
-        p.concreteDensity.value * calculatedVariables.layerVolume.value * 0.0000160185;
+        p.concreteDensity.value * calculatedVariables.layerVolume.value * CONVERSIONS.pcfToKgCm3;
       calculatedVariables.layerDeadLoad.imperialValue = 
         calculatedVariables.layerDeadLoad.value * 5.59974;
       
-      // Total Linear Wall Length
-      calculatedVariables.totalWallLength.value = 4 * p.singleWallLength.value;
+      // Total Linear Wall Length: T = (2*Single Wall Length) + (2*Single Wall Width)
+      calculatedVariables.totalWallLength.value = 
+        (2 * p.singleWallLength.value) + (2 * p.singleWallWidth.value);
       calculatedVariables.totalWallLength.imperialValue = 
-        calculatedVariables.totalWallLength.value * 0.393701;
+        calculatedVariables.totalWallLength.value * CONVERSIONS.cmToInch;
       
-      // Total Wall Height
-      calculatedVariables.totalWallHeight.value = p.chamberA.value * p.numberOfLayers.value;
-      calculatedVariables.totalWallHeight.imperialValue = 
-        calculatedVariables.totalWallHeight.value * 0.393701;
-      
-      // Chamber Volume
-      calculatedVariables.chamberVolume.value = calculatedVariables.layerVolume.value * p.chamberE.value;
+      // Chamber Volume: ((a×b)−(d×(a−c)))×e
+      calculatedVariables.chamberVolume.value = 
+        calculatedVariables.layerVolume.value * p.chamberE.value;
       calculatedVariables.chamberVolume.imperialValue = 
-        calculatedVariables.chamberVolume.value * 0.0610237;
+        calculatedVariables.chamberVolume.value * CONVERSIONS.cm3ToIn3;
       
-      // Total Wall Volume
+      // Total Wall Volume: ((a×b)−(d×(a−c)))×T
       calculatedVariables.totalWallVolume.value = 
         calculatedVariables.layerVolume.value * calculatedVariables.totalWallLength.value;
       calculatedVariables.totalWallVolume.imperialValue = 
-        calculatedVariables.totalWallVolume.value * 0.0610237;
+        calculatedVariables.totalWallVolume.value * CONVERSIONS.cm3ToIn3;
       
-      // Layer Mass for Full Footprint
+      // Layer Mass for Full Footprint: ρ×Total Wall Volume
       calculatedVariables.layerMass.value = 
-        p.concreteDensity.value * calculatedVariables.totalWallVolume.value * 0.0000160185;
+        p.concreteDensity.value * calculatedVariables.totalWallVolume.value * CONVERSIONS.pcfToKgCm3;
       calculatedVariables.layerMass.imperialValue = 
-        calculatedVariables.layerMass.value * 2.20462;
+        calculatedVariables.layerMass.value * CONVERSIONS.kgToLbs;
       
-      // Total Mass of Walls
-      calculatedVariables.totalMass.value = calculatedVariables.layerMass.value * p.numberOfLayers.value;
+      // Total Mass of Walls: Layer Mass×n
+      calculatedVariables.totalMass.value = 
+        calculatedVariables.layerMass.value * calculatedVariables.numberOfLayers.value;
       calculatedVariables.totalMass.imperialValue = 
-        (calculatedVariables.totalMass.value * 2.20462) / 2000; // Converting to tons
+        (calculatedVariables.totalMass.value * CONVERSIONS.kgToLbs) / 2000; // Converting to tons
       
-      // Update concrete cost calculation with detailed breakdown
-      const lbsOfConcrete = calculatedVariables.totalMass.value * 2.20462;
-      const portlandCementCost = lbsOfConcrete * 0.04;
-      const aggregatesCost = lbsOfConcrete * 0.015;
-      calculatedVariables.concreteCost.value = portlandCementCost + aggregatesCost;
+      // Concrete Cost Estimate: Total Mass in lbs×0.02
+      calculatedVariables.concreteCost.value = 
+        calculatedVariables.totalMass.value * CONVERSIONS.kgToLbs * 0.02;
       
-      // Linear Length Travelled
+      // Linear Length Travelled: T×n
       calculatedVariables.linearLength.value = 
-        calculatedVariables.totalWallLength.value * p.numberOfLayers.value;
+        calculatedVariables.totalWallLength.value * calculatedVariables.numberOfLayers.value;
       calculatedVariables.linearLength.imperialValue = 
-        calculatedVariables.linearLength.value * 0.393701;
+        calculatedVariables.linearLength.value * CONVERSIONS.cmToInch;
       
-      // Layer Print Time
+      // Layer Print Time: T/v
       calculatedVariables.layerPrintTime.value = 
-        calculatedVariables.totalWallLength.value / p.travelRate.value;
+        calculatedVariables.totalWallLength.value / p.travelRate.value; // seconds
       calculatedVariables.layerPrintTime.imperialValue = 
-        calculatedVariables.layerPrintTime.value / 60;
+        calculatedVariables.layerPrintTime.value / 60; // minutes
       
-      // Total Print Time
+      // Total Print Time: Layer print time * n
       calculatedVariables.totalPrintTime.value = 
-        calculatedVariables.layerPrintTime.value * p.numberOfLayers.value;
+        calculatedVariables.layerPrintTime.value * calculatedVariables.numberOfLayers.value;
       calculatedVariables.totalPrintTime.imperialValue = 
-        calculatedVariables.totalPrintTime.value / 60;
+        calculatedVariables.totalPrintTime.value / 60; // minutes
     }
+
+    // Call updateCalculations immediately in setup
+    updateCalculations()
 
     return {
       parameters,
+      filteredParameters,
       validationErrors,
       calculatedVariables,
       formatLabel,
       updateCalculations,
       updateParameter
     }
-  },
-  mounted() {
-    this.updateCalculations();
   }
 }
 </script>
@@ -288,6 +341,29 @@ export default {
   font-size: 0.8em;
   margin-top: 4px;
   display: block;
+  font-style: italic;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.info-text {
+  font-size: 0.9em;
+  color: #666;
   font-style: italic;
 }
 </style> 

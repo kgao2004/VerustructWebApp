@@ -1,13 +1,35 @@
 <template>
   <div class="calculator">
-    <h1>Wall Calculator</h1>
+    <h1>Verustruct Wall Calculator</h1>
     
+    <div class="visualization-section">
+      <WallVisualization
+        :roomShape="roomShape"
+        :wallHeight="parseFloat(totalWallHeight)"
+        :wallWidth="store.state.systemParameters.wallGap.value + (2 * store.state.systemParameters.chamberB.value)"
+        :numberOfLayers="numberOfLayers"
+        :chamberA="store.state.systemParameters.chamberA.value"
+      />
+    </div>
+
     <div class="input-section">
+      <div class="form-group">
+        <label for="roomShape">Room Shape:</label>
+        <select 
+          id="roomShape" 
+          v-model="roomShape"
+          @change="calculateOutputs"
+        >
+          <option value="square">Square Room (270" × 270")</option>
+          <option value="rectangle">Rectangle Room (360" × 270")</option>
+        </select>
+      </div>
+
       <div class="form-group">
         <label for="roomCount">Number of Rooms:</label>
         <input 
           type="number" 
-          id="roomCount" 
+          id="roomCount"
           v-model="roomCount"
           min="1"
           @input="calculateOutputs"
@@ -15,24 +37,15 @@
       </div>
 
       <div class="form-group">
-        <label for="wallLength">Single Wall Length:</label>
-        <select v-model="wallLength" @change="calculateOutputs">
-          <option v-for="length in wallLengthOptions" 
-                  :key="length" 
-                  :value="length">
-            {{ length }} meters
-          </option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="layers">Number of Layers:</label>
-        <select v-model="layers" @change="calculateOutputs">
-          <option v-for="layer in layerOptions" 
-                  :key="layer" 
-                  :value="layer">
-            {{ layer }} layers
-          </option>
+        <label for="totalWallHeight">Wall Height:</label>
+        <select 
+          id="totalWallHeight" 
+          v-model="totalWallHeight"
+          @change="calculateOutputs"
+        >
+          <option value="243.84">8 ft</option>
+          <option value="304.8">10 ft</option>
+          <option value="365.76">12 ft</option>
         </select>
       </div>
     </div>
@@ -41,24 +54,28 @@
       <h2>Calculation Results</h2>
       <div class="output-grid">
         <div class="output-item">
+          <label>Number of Layers:</label>
+          <span>{{ numberOfLayers }}</span>
+        </div>
+        <div class="output-item">
           <label>Concrete Cost Estimate:</label>
           <span>${{ outputs.concreteCost.toFixed(2) }}</span>
         </div>
         <div class="output-item">
           <label>Linear Length Traveled:</label>
-          <span>{{ outputs.linearLength.toFixed(2) }} meters</span>
+          <span>{{ outputs.linearLength.toFixed(2) }} cm</span>
         </div>
         <div class="output-item">
           <label>Travel Rate:</label>
-          <span>{{ outputs.travelRate.toFixed(2) }} m/min</span>
+          <span>{{ outputs.travelRate.toFixed(2) }} cm/s</span>
         </div>
         <div class="output-item">
           <label>Layer Print Time:</label>
-          <span>{{ outputs.layerPrintTime.toFixed(2) }} minutes</span>
+          <span>{{ outputs.layerPrintTime.toFixed(2) }} seconds</span>
         </div>
         <div class="output-item">
           <label>Total Print Time:</label>
-          <span>{{ outputs.totalPrintTime.toFixed(2) }} hours</span>
+          <span>{{ outputs.totalPrintTime.toFixed(2) }} seconds</span>
         </div>
       </div>
     </div>
@@ -66,33 +83,76 @@
 </template>
 
 <script>
+import { ref, computed } from 'vue'
+import { useStore } from 'vuex'
+import WallVisualization from '@/components/WallVisualization.vue'
+
+// Add conversion constants
+const CONVERSIONS = {
+  cmToInch: 0.393701,
+  cmToFeet: 0.0328084,
+  kgToLbs: 2.20462,
+  pcfToKgCm3: 0.0000160185,
+  cm2ToIn2: 0.155,
+  cm3ToIn3: 0.0610237
+}
+
 export default {
   name: 'ClientCalculator',
-  data() {
-    return {
-      roomCount: 1,
-      wallLength: 3,
-      layers: 10,
-      wallLengthOptions: [2, 3, 4, 5, 6],
-      layerOptions: [5, 10, 15, 20, 25],
-      outputs: {
-        concreteCost: 0,
-        linearLength: 0,
-        travelRate: 0,
-        layerPrintTime: 0,
-        totalPrintTime: 0
-      }
-    }
+  components: {
+    WallVisualization
   },
-  methods: {
-    calculateOutputs() {
-      // Placeholder calculations - these will be replaced with actual formulas
-      const baseRate = 0.5; // meters per minute
-      this.outputs.linearLength = this.roomCount * this.wallLength * 4;
-      this.outputs.travelRate = baseRate;
-      this.outputs.layerPrintTime = this.outputs.linearLength / baseRate;
-      this.outputs.totalPrintTime = (this.outputs.layerPrintTime * this.layers) / 60;
-      this.outputs.concreteCost = this.outputs.linearLength * this.layers * 2.5; // $2.50 per meter-layer
+  setup() {
+    const store = useStore()
+    const roomShape = ref('square')
+    const roomCount = ref(1)
+    const totalWallHeight = ref('304.8') // 10 ft in cm as default
+
+    // Compute number of layers
+    const numberOfLayers = computed(() => {
+      const chamberA = store.state.systemParameters.chamberA.value
+      return Math.ceil(parseFloat(totalWallHeight.value) / chamberA)
+    })
+
+    const outputs = ref({
+      concreteCost: 0,
+      linearLength: 0,
+      travelRate: 0,
+      layerPrintTime: 0,
+      totalPrintTime: 0
+    })
+
+    const calculateOutputs = () => {
+      // Update store with current values
+      store.commit('updateParameter', { key: 'roomShape', value: roomShape.value })
+      store.commit('updateParameter', { key: 'numberOfRooms', value: roomCount.value })
+      store.commit('updateParameter', { key: 'totalWallHeight', value: totalWallHeight.value })
+
+      const p = store.state.systemParameters;
+      
+      // Calculate wall dimensions based on room shape
+      const wallLength = roomShape.value === 'square' ? 685.8 : 914.4; // 270" or 360"
+      const wallWidth = 685.8; // 270"
+      
+      // Total Linear Wall Length: T = (2*Single Wall Length) + (2*Single Wall Width)
+      const totalLength = (2 * wallLength + 2 * wallWidth) * roomCount.value;
+      
+      // Linear Length Traveled = Total Linear Wall Length × number of layers
+      outputs.value.linearLength = totalLength * numberOfLayers.value;
+      outputs.value.travelRate = p.travelRate.value;
+      outputs.value.layerPrintTime = totalLength / p.travelRate.value; // seconds
+      outputs.value.totalPrintTime = outputs.value.layerPrintTime * numberOfLayers.value; // seconds
+      outputs.value.concreteCost = totalLength * numberOfLayers.value * p.concreteDensity.value * CONVERSIONS.pcfToKgCm3 * CONVERSIONS.kgToLbs * 0.02;
+    }
+
+    return {
+      roomShape,
+      roomCount,
+      totalWallHeight,
+      numberOfLayers,
+      outputs,
+      calculateOutputs,
+      store
     }
   },
   mounted() {
@@ -162,5 +222,13 @@ export default {
 .output-item span {
   font-size: 1.2em;
   color: #42b983;
+}
+
+.visualization-section {
+  margin-bottom: 20px;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style> 

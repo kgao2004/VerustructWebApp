@@ -20,12 +20,6 @@ const CONSTRAINTS = {
     min: 50,
     max: 120,
     message: 'Must be between 50-120 pcf'
-  },
-  numberOfLayers: {
-    // For 10 ft height (2 ft above standard 8 ft ceiling)
-    // Converting 10 ft to cm and dividing by chamber A height
-    calculate: (chamberA) => Math.ceil((304.8) / chamberA),
-    message: 'Calculated based on desired 10 ft wall height'
   }
 }
 
@@ -34,7 +28,8 @@ const CONVERSIONS = {
   cmToInch: 0.393701,
   pcfToKgCm3: 0.0000160185,
   cm2ToIn2: 0.155,
-  cm3ToIn3: 0.0610237
+  cm3ToIn3: 0.0610237,
+  cmToFeet: 0.0328084
 }
 
 export default createStore({
@@ -88,23 +83,43 @@ export default createStore({
         constraints: CONSTRAINTS.concreteDensity
       },
       travelRate: { 
-        value: 0.833, 
+        value: 4, 
         type: 'number', 
         unit: 'cm/s', 
         getImperial: (val) => `${(val * CONVERSIONS.cmToInch).toFixed(3)} in/s`
       },
       singleWallLength: { 
-        value: 300, 
+        value: 685.8, // 270 inches in cm
+        type: 'number', 
+        unit: 'cm', 
+        getImperial: (val) => `${(val * CONVERSIONS.cmToInch).toFixed(2)} in`
+      },
+      singleWallWidth: { 
+        value: 685.8, // 270 inches in cm
         type: 'number', 
         unit: 'cm', 
         getImperial: (val) => `${(val * CONVERSIONS.cmToInch).toFixed(2)} in`
       },
       numberOfRooms: { value: 1, type: 'number', unit: 'rooms' },
-      numberOfLayers: { 
-        value: 10, 
-        type: 'number', 
-        unit: 'layers',
-        constraints: CONSTRAINTS.numberOfLayers
+      totalWallHeight: {
+        value: '304.8', // 10 ft in cm
+        type: 'select',
+        options: [
+          { value: '243.84', label: '8 ft' },
+          { value: '304.8', label: '10 ft' },
+          { value: '365.76', label: '12 ft' }
+        ],
+        unit: 'cm',
+        getImperial: (val) => `${(parseFloat(val) * CONVERSIONS.cmToFeet).toFixed(0)} ft`
+      },
+      roomShape: {
+        value: 'square',
+        type: 'select',
+        options: [
+          { value: 'square', label: 'Square (270" × 270")' },
+          { value: 'rectangle', label: 'Rectangle (360" × 270")' }
+        ],
+        unit: ''
       }
     },
     validationErrors: {}
@@ -131,10 +146,15 @@ export default createStore({
         }
       }
 
-      // Update number of layers when chamber A changes
-      if (key === 'chamberA') {
-        const numberOfLayers = CONSTRAINTS.numberOfLayers.calculate(value);
-        state.systemParameters.numberOfLayers.value = numberOfLayers;
+      // Update wall dimensions when room shape changes
+      if (key === 'roomShape') {
+        if (value === 'square') {
+          state.systemParameters.singleWallLength.value = 685.8;
+          state.systemParameters.singleWallWidth.value = 685.8;
+        } else {
+          state.systemParameters.singleWallLength.value = 914.4;
+          state.systemParameters.singleWallWidth.value = 685.8;
+        }
       }
     }
   },
