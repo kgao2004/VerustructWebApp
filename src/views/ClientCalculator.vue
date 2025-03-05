@@ -63,19 +63,19 @@
         </div>
         <div class="output-item">
           <label>Linear Length Traveled:</label>
-          <span>{{ outputs.linearLength.toFixed(2) }} cm</span>
+          <span>{{ outputs.linearLength.toFixed(2) }} cm ({{ (outputs.linearLength * CONVERSIONS.cmToInch).toFixed(2) }} in)</span>
         </div>
         <div class="output-item">
           <label>Travel Rate:</label>
-          <span>{{ outputs.travelRate.toFixed(2) }} cm/s</span>
+          <span>{{ outputs.travelRate.toFixed(2) }} cm/s ({{ (outputs.travelRate * CONVERSIONS.cmToInch).toFixed(2) }} in/s)</span>
         </div>
         <div class="output-item">
           <label>Layer Print Time:</label>
-          <span>{{ outputs.layerPrintTime.toFixed(2) }} seconds</span>
+          <span>{{ outputs.layerPrintTime.toFixed(2) }} seconds ({{ (outputs.layerPrintTime / 60).toFixed(2) }} minutes)</span>
         </div>
         <div class="output-item">
           <label>Total Print Time:</label>
-          <span>{{ outputs.totalPrintTime.toFixed(2) }} seconds</span>
+          <span>{{ outputs.totalPrintTime.toFixed(2) }} seconds ({{ (outputs.totalPrintTime / 60).toFixed(2) }} minutes)</span>
         </div>
       </div>
     </div>
@@ -104,9 +104,9 @@ export default {
   },
   setup() {
     const store = useStore()
-    const roomShape = ref('square')
-    const roomCount = ref(1)
-    const totalWallHeight = ref('304.8') // 10 ft in cm as default
+    const roomShape = ref(store.state.systemParameters.roomShape.value)
+    const roomCount = ref(store.state.systemParameters.numberOfRooms.value)
+    const totalWallHeight = ref(store.state.systemParameters.totalWallHeight.value)
 
     // Compute number of layers
     const numberOfLayers = computed(() => {
@@ -137,12 +137,26 @@ export default {
       // Total Linear Wall Length: T = (2*Single Wall Length) + (2*Single Wall Width)
       const totalLength = (2 * wallLength + 2 * wallWidth) * roomCount.value;
       
+      // Layer Volume per unit length: (a×b)−(d×(a−c))
+      const layerVolume = (p.chamberA.value * p.chamberB.value) - 
+        (p.chamberD.value * (p.chamberA.value - p.chamberC.value));
+      
+      // Total Wall Volume: ((a×b)−(d×(a−c)))×T
+      const totalWallVolume = layerVolume * totalLength;
+      
+      // Layer Mass for Full Footprint: ρ×Total Wall Volume
+      const layerMass = p.concreteDensity.value * totalWallVolume * CONVERSIONS.pcfToKgCm3;
+      
+      // Total Mass of Walls: Layer Mass×n
+      const totalMass = layerMass * numberOfLayers.value;
+      
       // Linear Length Traveled = Total Linear Wall Length × number of layers
       outputs.value.linearLength = totalLength * numberOfLayers.value;
       outputs.value.travelRate = p.travelRate.value;
       outputs.value.layerPrintTime = totalLength / p.travelRate.value; // seconds
       outputs.value.totalPrintTime = outputs.value.layerPrintTime * numberOfLayers.value; // seconds
-      outputs.value.concreteCost = totalLength * numberOfLayers.value * p.concreteDensity.value * CONVERSIONS.pcfToKgCm3 * CONVERSIONS.kgToLbs * 0.02;
+      // Concrete Cost Estimate: Total Mass in lbs×0.02
+      outputs.value.concreteCost = totalMass * CONVERSIONS.kgToLbs * 0.02;
     }
 
     return {
@@ -152,7 +166,8 @@ export default {
       numberOfLayers,
       outputs,
       calculateOutputs,
-      store
+      store,
+      CONVERSIONS
     }
   },
   mounted() {
