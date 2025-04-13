@@ -183,6 +183,18 @@ export default {
   padding: 20px;
 }
 
+.calculator h1 {
+  font-family: 'K2D', sans-serif;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.calculator h2 {
+  font-family: 'K2D', sans-serif;
+  font-weight: 500;
+  margin-bottom: 15px;
+}
+
 .input-section {
   background-color: #f8f9fa;
   padding: 20px;
@@ -197,7 +209,8 @@ export default {
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  font-weight: bold;
+  font-family: 'Kumbh Sans', sans-serif;
+  font-weight: 600;
 }
 
 .form-group input,
@@ -206,6 +219,7 @@ export default {
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-family: 'Inter', sans-serif;
 }
 
 .output-section {
@@ -229,12 +243,14 @@ export default {
 
 .output-item label {
   display: block;
-  font-weight: bold;
+  font-family: 'Kumbh Sans', sans-serif;
+  font-weight: 600;
   margin-bottom: 5px;
   color: #666;
 }
 
 .output-item span {
+  font-family: 'Inter', sans-serif;
   font-size: 1.2em;
   color: #42b983;
 }

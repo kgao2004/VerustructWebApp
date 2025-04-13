@@ -244,6 +244,12 @@ export default {
   padding: 20px;
 }
 
+.admin-panel h2 {
+  font-family: 'K2D', sans-serif;
+  font-weight: 500;
+  margin-bottom: 15px;
+}
+
 .parameters-section,
 .calculated-section {
   background-color: #fff;
@@ -268,7 +274,8 @@ export default {
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  font-weight: bold;
+  font-family: 'Kumbh Sans', sans-serif;
+  font-weight: 600;
 }
 
 .form-group input {
@@ -277,6 +284,7 @@ export default {
   border: 1px solid #ddd;
   border-radius: 4px;
   margin-bottom: 1.5rem;
+  font-family: 'Inter', sans-serif;
 }
 
 .unit {
@@ -284,6 +292,7 @@ export default {
   right: 10px;
   top: 38px;
   color: #666;
+  font-family: 'Inter', sans-serif;
 }
 
 .imperial {
@@ -293,6 +302,7 @@ export default {
   color: #666;
   font-size: 0.9em;
   font-style: italic;
+  font-family: 'Inter', sans-serif;
 }
 
 .output-grid {
@@ -309,17 +319,20 @@ export default {
 
 .output-item label {
   display: block;
-  font-weight: bold;
+  font-family: 'Kumbh Sans', sans-serif;
+  font-weight: 600;
   margin-bottom: 5px;
   color: #666;
 }
 
 .output-item span {
+  font-family: 'Inter', sans-serif;
   font-size: 1.2em;
   color: #42b983;
 }
 
 .imperial-value {
+  font-family: 'Inter', sans-serif;
   font-size: 0.9em;
   color: #666;
   margin-left: 8px;
@@ -334,6 +347,7 @@ export default {
   font-size: 0.8em;
   margin-top: 4px;
   display: block;
+  font-family: 'Inter', sans-serif;
 }
 
 .constraint-info {
@@ -342,6 +356,7 @@ export default {
   margin-top: 4px;
   display: block;
   font-style: italic;
+  font-family: 'Inter', sans-serif;
 }
 
 .checkbox-group {
@@ -354,6 +369,8 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -365,5 +382,6 @@ export default {
   font-size: 0.9em;
   color: #666;
   font-style: italic;
+  font-family: 'Inter', sans-serif;
 }
 </style> 
