@@ -252,7 +252,7 @@ export default {
 .output-item span {
   font-family: 'Inter', sans-serif;
   font-size: 1.2em;
-  color: #42b983;
+  color: #435058;
 }
 
 .visualization-section {

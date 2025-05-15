@@ -7,7 +7,7 @@
             <img src="@/assets/verustruct-logo.png" alt="Verustruct" class="logo-image" />
           </router-link>
           <div class="nav-links">
-            <router-link to="/calculator">Calculator</router-link>
+            <router-link to="/calculator">Build Your Home</router-link>
             <router-link to="/pricing">Pricing</router-link>
           </div>
         </div>
@@ -23,7 +23,7 @@
 <style>
 :root {
   --primary-color: #1a1a1a;
-  --secondary-color: #42b983;
+  --secondary-color: #435058;
   --background-color: #f5f5f5;
   --card-background: #ffffff;
   --text-color: #2c3e50;

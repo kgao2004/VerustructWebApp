@@ -327,14 +327,14 @@ export default {
 
 .output-item span {
   font-family: 'Inter', sans-serif;
-  font-size: 1.2em;
-  color: #42b983;
+  font-size: 20px;
+  color: #435058;
 }
 
 .imperial-value {
   font-family: 'Inter', sans-serif;
   font-size: 0.9em;
-  color: #666;
+  color: #661614;
   margin-left: 8px;
 }
 
