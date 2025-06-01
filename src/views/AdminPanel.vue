@@ -2,6 +2,7 @@
   <div class="admin-panel">
     <h1>Admin Panel</h1>
     
+    
     <div class="parameters-section">
       <h2>System Parameters</h2>
       <div class="form-grid">
@@ -71,6 +72,8 @@
 </template>
 
 <script>
+
+import Sidebar from '@/components/Sidebar.vue';
 import { computed, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
@@ -90,6 +93,9 @@ const CONVERSIONS = {
 
 export default {
   name: 'AdminPanel',
+  components: {
+    Sidebar
+  },
   setup() {
     const store = useStore()
     
@@ -238,9 +244,10 @@ export default {
 </script>
 
 <style scoped>
+
+
 .admin-panel {
-  max-width: 1200px;
-  margin: 0 auto;
+  flex: 1;
   padding: 20px;
 }
 
